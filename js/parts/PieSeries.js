@@ -19,6 +19,7 @@ defaultPlotOptions.pie = merge(defaultSeriesOptions, {
 		// softConnector: true,
 		//y: 0
 	},
+	ignoreHiddenPoint: true, // docs: new default
 	//innerSize: 0,
 	legendType: 'point',
 	marker: null, // point options are specified in the base options
@@ -50,6 +51,11 @@ var PiePoint = extendClass(Point, {
 
 		var point = this,
 			toggleSlice;
+
+		// Disallow negative values (#1530)
+		if (point.y < 0) {
+			point.y = null;
+		}
 
 		//visible: options.visible !== false,
 		extend(point, {
@@ -153,6 +159,7 @@ var PieSeries = {
 	isCartesian: false,
 	pointClass: PiePoint,
 	requireSorting: false,
+	noSharedTooltip: true,
 	pointAttrToOptions: { // mapping between SVG attributes and the corresponding options
 		stroke: 'borderColor',
 		'stroke-width': 'borderWidth',
@@ -162,10 +169,7 @@ var PieSeries = {
 	/**
 	 * Pies have one color each point
 	 */
-	getColor: function () {
-		// record first color for use in setData
-		this.initialColor = this.chart.counters.color;
-	},
+	getColor: noop,
 
 	/**
 	 * Animate the pies in
@@ -260,7 +264,7 @@ var PieSeries = {
 			start,
 			end,
 			angle,
-			startAngleRad = series.startAngleRad = mathPI / 180 * ((options.startAngle || 0) % 360 - 90), // docs
+			startAngleRad = series.startAngleRad = mathPI / 180 * ((options.startAngle || 0) % 360 - 90),
 			points = series.points,
 			circ = 2 * mathPI,
 			fraction,
@@ -439,7 +443,7 @@ var PieSeries = {
 				point.graphic = graphic = renderer.arc(shapeArgs)
 					.setRadialReference(series.center)
 					.attr(extend(
-						point.pointAttr[NORMAL_STATE],
+						point.pointAttr[point.selected ? SELECT_STATE : NORMAL_STATE],
 						{ 'stroke-linejoin': 'round' }
 					))
 					.add(point.group)

@@ -15,8 +15,6 @@ function MouseTracker(chart, options) {
 
 	// Reference to the chart
 	this.chart = chart;
-	
-	this.pinchDown = [];
 
 	// The interval id
 	//this.tooltipTimeout = UNDEFINED;
@@ -132,8 +130,7 @@ MouseTracker.prototype = {
 			i,
 			j,
 			distance = chart.chartWidth,
-			index = mouseTracker.getIndex(e),
-			anchor;
+			index = mouseTracker.getIndex(e);
 
 		// shared tooltip
 		if (tooltip && mouseTracker.options.tooltip.shared && !(hoverSeries && hoverSeries.noSharedTooltip)) {
@@ -144,7 +141,7 @@ MouseTracker.prototype = {
 			for (j = 0; j < i; j++) {
 				if (series[j].visible &&
 						series[j].options.enableMouseTracking !== false &&
-						!series[j].noSharedTooltip && series[j].tooltipPoints.length) {
+						!series[j].noSharedTooltip && series[j].tooltipPoints && series[j].tooltipPoints.length) {
 					point = series[j].tooltipPoints[index];
 					point._dist = mathAbs(index - point[series[j].xAxis.tooltipPosName || 'plotX']);
 					distance = mathMin(distance, point._dist);
@@ -175,13 +172,9 @@ MouseTracker.prototype = {
 			if (point && point !== hoverPoint) {
 
 				// trigger the events
-				point.onMouseOver(e);
+				point.onMouseOver();
 
 			}
-			
-		} else if (tooltip && tooltip.followPointer && !tooltip.isHidden) {
-			anchor = tooltip.getAnchor([{}], e);
-			tooltip.updatePosition({ plotX: anchor[0], plotY: anchor[1] });
 		}
 	},
 
@@ -234,110 +227,6 @@ MouseTracker.prototype = {
 	},
 
 	/**
-	 * Scale series groups to a certain scale and translation
-	 */
-	scaleGroups: function (attribs, clip) {
-
-		var chart = this.chart;
-
-		// Scale each series
-		each(chart.series, function (series) {
-			series.group.attr(attribs);
-			if (series.markerGroup) {
-				series.markerGroup.attr(attribs);
-				series.markerGroup.clip(clip ? chart.clipRect : null);
-			}
-			if (series.dataLabelsGroup) {
-				series.dataLabelsGroup.attr(attribs);
-			}
-		});
-		
-		// TODO: shorten. This is just a translated version of selectionMarker
-		chart.clipRect.attr(clip ? {
-			x: clip.x - chart.plotLeft,
-			y: clip.y - chart.plotTop,
-			width: clip.width,
-			height: clip.height
-		} : chart.clipBox);
-	},
-	
-	/**
-	 * Handle touch events with two touches
-	 */
-	pinchHandler: function (e) {
-		var mouseTracker = this,
-			chart = mouseTracker.chart,
-			pinchDown = mouseTracker.pinchDown,
-			touches = e.touches,
-			chart1X,
-			chart2X,
-			chart1Y,
-			chart2Y,
-			scaleX,
-			scaleY,
-			zoomHor = mouseTracker.zoomHor,
-			zoomVert = mouseTracker.zoomVert,
-			selectionMarker = mouseTracker.selectionMarker,
-			plotWidth = chart.plotWidth,
-			transform = {};
-		
-		// Normalize each touch
-		map(touches, function (e) {
-			return mouseTracker.normalizeMouseEvent(e);
-		});
-		
-		// Handle touch move/pinching
-		if (pinchDown[0] && pinchDown[1]) {
-			
-			// Set the marker
-			if (!selectionMarker) {
-				mouseTracker.selectionMarker = selectionMarker = {
-					x: chart.plotLeft,
-					y: chart.plotTop,
-					width: zoomHor ? 1 : plotWidth,
-					height: zoomVert ? 1 : chart.plotHeight,
-					destroy: noop
-				};
-			}
-			if (zoomHor) {
-				chartX1 = mathMin(pinchDown[0].chartX, pinchDown[1].chartX);
-				chartX2 = mathMin(touches[0].chartX, touches[1].chartX);
-				
-				transform.scaleX = scaleX = mathAbs(touches[0].chartX - touches[1].chartX) / mathAbs(pinchDown[1].chartX - pinchDown[0].chartX);
-				transform.translateX = chartX2 - (chartX1 - chart.plotLeft) * scaleX;
-			
-				selectionMarker.x = ((chart.plotLeft - chartX2) / scaleX) + chartX1;
-				selectionMarker.width = plotWidth / scaleX;
-				mouseTracker.hasPinched = true;
-			}
-			if (zoomVert) {
-				chartY1 = mathMin(pinchDown[0].chartY, pinchDown[1].chartY);
-				chartY2 = mathMin(touches[0].chartY, touches[1].chartY);
-				
-				transform.scaleY = scaleY = mathAbs(touches[0].chartY - touches[1].chartY) / mathAbs(pinchDown[1].chartY - pinchDown[0].chartY);
-				transform.translateY = chartY2 - (chartY1 - chart.plotTop) * scaleY;
-
-				selectionMarker.y = ((chart.plotTop - chartY2) / scaleY) + chartY1;
-				selectionMarker.height = chart.plotHeight / scaleY;
-				mouseTracker.hasPinched = true;
-			}
-
-			// Scale and translate the groups to provide visual feedback during pinching
-			this.scaleGroups(transform, selectionMarker);
-
-			
-		} 
-			
-		// Register the touch start position
-		each(touches, function (e, i) {
-			if (!pinchDown[i]) {
-				pinchDown[i] = { chartX: e.chartX, chartY: e.chartY };
-			}
-		});
-		return false;
-	},
-
-	/**
 	 * Set the JS events on the container element
 	 */
 	setDOMEvents: function () {
@@ -346,8 +235,8 @@ MouseTracker.prototype = {
 			chart = mouseTracker.chart,
 			container = chart.container,
 			hasDragged,
-			zoomHor = this.zoomHor = (mouseTracker.zoomX && !chart.inverted) || (mouseTracker.zoomY && chart.inverted),
-			zoomVert = this.zoomVert = (mouseTracker.zoomY && !chart.inverted) || (mouseTracker.zoomX && chart.inverted);
+			zoomHor = (mouseTracker.zoomX && !chart.inverted) || (mouseTracker.zoomY && chart.inverted),
+			zoomVert = (mouseTracker.zoomY && !chart.inverted) || (mouseTracker.zoomX && chart.inverted);
 
 		/**
 		 * Mouse up or outside the plot area
@@ -358,12 +247,13 @@ MouseTracker.prototype = {
 						xAxis: [],
 						yAxis: []
 					},
-					selectionBox = mouseTracker.selectionMarker,
+					selectionBox = mouseTracker.selectionMarker.getBBox(),
 					selectionLeft = selectionBox.x - chart.plotLeft,
 					selectionTop = selectionBox.y - chart.plotTop,
 					runZoom;
+
 				// a selection has been made
-				if (hasDragged || mouseTracker.hasPinched) {
+				if (hasDragged) {
 
 					// record each axis' min and max
 					each(chart.axes, function (axis) {
@@ -401,30 +291,17 @@ MouseTracker.prototype = {
 						}
 					});
 					if (runZoom) {
-						fireEvent(chart, 'selection', selectionData, function (args) { 
-							chart.zoom(extend(args, mouseTracker.hasPinched ? { animation: false } : null)); 
-						});
+						fireEvent(chart, 'selection', selectionData, function (args) { chart.zoom(args); });
 					}
 
 				}
 				mouseTracker.selectionMarker = mouseTracker.selectionMarker.destroy();
-
-				// Reset scaling preview
-				if (mouseTracker.hasPinched) {
-					mouseTracker.scaleGroups({
-						translateX: chart.plotLeft,
-						translateY: chart.plotTop,
-						scaleX: 1,
-						scaleY: 1
-					});
-				}
 			}
 
 			if (chart) { // it may be destroyed on mouse up - #877
 				css(container, { cursor: 'auto' });
 				chart.cancelClick = hasDragged; // #370
-				chart.mouseIsDown = hasDragged = mouseTracker.hasPinched = false;
-				mouseTracker.pinchDown = [];
+				chart.mouseIsDown = hasDragged = false;
 			}
 
 			removeEvent(doc, 'mouseup', drop);
@@ -486,12 +363,8 @@ MouseTracker.prototype = {
 			
 			// let the system handle multitouch operations like two finger scroll
 			// and pinching
-			if (e && e.touches) {
-				if (e.touches.length === 2) {
-					return mouseTracker.pinchHandler(e);
-				} else if (e.touches.length > 2) {
-					return true;
-				}
+			if (e && e.touches && e.touches.length > 1) {
+				return;
 			}
 
 			// normalize
@@ -521,7 +394,13 @@ MouseTracker.prototype = {
 			// cancel on mouse outside
 			if (isOutsidePlot) {
 
+				/*if (!lastWasOutsidePlot) {
+					// reset the tracker
+					resetTracker();
+				}*/
+
 				// drop the selection if any and reset mouseIsDown and hasDragged
+				//drop();
 				if (chartX < chart.plotLeft) {
 					chartX = chart.plotLeft;
 				} else if (chartX > chart.plotLeft + chart.plotWidth) {
@@ -599,10 +478,10 @@ MouseTracker.prototype = {
 			return isOutsidePlot || !chart.hasCartesianSeries;
 		};
 
-		/*
-		 * When the mouse enters the container, run mouseMove
-		 */
-		container.onmousemove = mouseMove;
+		// When the mouse enters the container, run mouseMove
+		if (!/Android 4\.0/.test(userAgent)) { // This hurts. Best effort for #1385.
+			container.onmousemove = mouseMove;
+		}
 
 		/*
 		 * When the mouse leaves the container, hide the tracking (tooltip).
@@ -612,7 +491,9 @@ MouseTracker.prototype = {
 		// issue #149 workaround
 		// The mouseleave event above does not always fire. Whenever the mouse is moving
 		// outside the plotarea, hide the tooltip
-		addEvent(doc, 'mousemove', mouseTracker.hideTooltipOnMouseMove);
+		if (!hasTouch) { // #1385
+			addEvent(doc, 'mousemove', mouseTracker.hideTooltipOnMouseMove);
+		}
 
 		container.ontouchstart = function (e) {
 			// For touch devices, use touchmove to zoom

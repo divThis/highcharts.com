@@ -24,6 +24,9 @@ defaultPlotOptions.flags = merge(defaultPlotOptions.column, {
 		fontWeight: 'bold',
 		textAlign: 'center'
 	},
+	tooltip: {
+		pointFormat: '{point.text}<br/>'
+	},
 	threshold: null,
 	y: -30
 });
@@ -154,7 +157,7 @@ seriesTypes.flags = extendClass(seriesTypes.column, {
 			plotY,
 			options = series.options,
 			optionsY = options.y,
-			shape = options.shape,
+			shape,
 			box,
 			bBox,
 			i,
@@ -171,6 +174,7 @@ seriesTypes.flags = extendClass(seriesTypes.column, {
 			point = points[i];
 			plotX = point.plotX + crisp;
 			stackIndex = point.stackIndex;
+			shape = point.options.shape || options.shape; // docs: individual point shape
 			plotY = point.plotY;
 			if (plotY !== UNDEFINED) {
 				plotY = point.plotY + optionsY + crisp - (stackIndex !== UNDEFINED && stackIndex * options.stackDistance);
@@ -200,7 +204,8 @@ seriesTypes.flags = extendClass(seriesTypes.column, {
 						plotY,
 						shape,
 						anchorX,
-						anchorY
+						anchorY,
+						options.useHTML // docs: plotOptions.flags.useHTML
 					)
 					.css(merge(options.style, point.style))
 					.attr(pointAttr)
@@ -254,14 +259,6 @@ seriesTypes.flags = extendClass(seriesTypes.column, {
 				});
 			}
 		});
-	},
-
-	/**
-	 * Override the regular tooltip formatter by returning the point text given
-	 * in the options
-	 */
-	tooltipFormatter: function (item) {
-		return item.point.text;
 	},
 
 	/**

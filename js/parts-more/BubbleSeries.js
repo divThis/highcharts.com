@@ -7,7 +7,8 @@ defaultPlotOptions.bubble = merge(defaultPlotOptions.scatter, {
 	dataLabels: {
 		inside: true,
 		style: {
-			color: 'white'
+			color: 'white',
+			textShadow: '0px 0px 3px black'
 		},
 		verticalAlign: 'middle'
 	},
@@ -20,7 +21,6 @@ defaultPlotOptions.bubble = merge(defaultPlotOptions.scatter, {
 	minSize: 8,
 	maxSize: '20%',
 	// negativeColor: null,
-	shadow: false,
 	stickyTracking: false,
 	tooltip: {
 		followPointer: true,
@@ -93,7 +93,6 @@ seriesTypes.bubble = extendClass(seriesTypes.scatter, {
 			radii.push(math.round(minSize + pos * (maxSize - minSize)) / 2);
 		}
 		this.radii = radii;
-	
 	},
 	
 	/**

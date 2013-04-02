@@ -114,21 +114,43 @@
 					}
 				};
 			
+			/**
+			 * Register Highcharts as a plugin in the respective framework // docs
+			 */
+			$.fn.highcharts = function () {
+				var constr = 'Chart', // default constructor
+					args = arguments,
+					options,
+					ret,
+					chart;
 
-		},
+				if (isString(args[0])) {
+					constr = args[0];
+					args = Array.prototype.slice.call(args, 1); 
+				}
+				options = args[0];
 
-		/**
-		 * Register Highcharts as a plugin in the respective framework
-		 */
-		plugin: function (constr) {
-			var lcConstr = constr.toLowerCase();
-			$.fn[lcConstr] = function (options, callback) {
-				options.chart = Highcharts.merge(options.chart, { renderTo: this[0] });
-				this[lcConstr] = new Highcharts[constr](options, callback);
-				return this;
+				// Create the chart
+				if (options !== UNDEFINED) {
+					/*jslint unused:false*/
+					options.chart = options.chart || {};
+					options.chart.renderTo = this[0];
+					chart = new Highcharts[constr](options, args[1]);
+					ret = this;
+					/*jslint unused:true*/
+				}
+
+				// When called without parameters or with the return argument, get a predefined chart
+				if (options === UNDEFINED) {
+					ret = charts[attr(this[0], 'data-highcharts-chart')];
+				}	
+
+				return ret;
 			};
+
 		},
-	
+
+		
 		/**
 		 * Downloads a script and executes a callback when done.
 		 * @param {String} scriptLocation
@@ -170,14 +192,6 @@
 			}
 			return results;
 	
-		},
-	
-		/**
-		 * Deep merge two objects and return a third object
-		 */
-		merge: function () {
-			var args = arguments;
-			return $.extend(true, null, args[0], args[1], args[2], args[3]);
 		},
 	
 		/**
@@ -308,7 +322,7 @@
 			}
 	
 			$el.stop();
-			if (params.opacity !== UNDEFINED) { 
+			if (params.opacity !== UNDEFINED && el.attr) {
 				params.opacity += 'px'; // force jQuery to use same logic as width and height
 			}
 			$el.animate(params, options);
@@ -334,9 +348,9 @@ if (globalAdapter) {
 }
 
 
-	// Utility functions. If the HighchartsAdapter is not defined, adapter is an empty object
-	// and all the utility functions will be null. In that case they are populated by the
-	// default adapters below.
+// Utility functions. If the HighchartsAdapter is not defined, adapter is an empty object
+// and all the utility functions will be null. In that case they are populated by the
+// default adapters below.
 var adapterRun = adapter.adapterRun,
 	getScript = adapter.getScript,
 	inArray = adapter.inArray,
@@ -344,7 +358,6 @@ var adapterRun = adapter.adapterRun,
 	grep = adapter.grep,
 	offset = adapter.offset,
 	map = adapter.map,
-	merge = adapter.merge,
 	addEvent = adapter.addEvent,
 	removeEvent = adapter.removeEvent,
 	fireEvent = adapter.fireEvent,

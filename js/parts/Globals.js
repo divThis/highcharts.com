@@ -39,6 +39,8 @@ var UNDEFINED,
 	timeUnits,
 	noop = function () {},
 	charts = [],
+	PRODUCT = '@product.name@',
+	VERSION = '@product.version@',
 
 	// some constants for frequently used strings
 	DIV = 'div',
@@ -103,4 +105,4 @@ var UNDEFINED,
 	seriesTypes = {};
 
 // The Highcharts namespace
-win.Highcharts = {};
+win.Highcharts = win.Highcharts ? error(16, true) : {};

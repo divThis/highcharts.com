@@ -178,6 +178,19 @@ VMLElement = {
 								convertedPath[i] = 'x';
 							} else {
 								convertedPath[i] = value[i];
+
+								// When the start X and end X coordinates of an arc are too close,
+								// they are rounded to the same value above. In this case, substract 1 from the end X
+								// position. #760, #1371. 
+								if (value[i] === 'wa' || value[i] === 'at') {
+									if (convertedPath[i + 5] === convertedPath[i + 7]) {
+										convertedPath[i + 7] -= 1;
+									}
+									// Start and end Y (#1410)
+									if (convertedPath[i + 6] === convertedPath[i + 8]) {
+										convertedPath[i + 8] -= 1;
+									}
+								}
 							}
 
 						}
@@ -210,7 +223,6 @@ VMLElement = {
 							value = value === HIDDEN ? '-999em' : 0;
 							key = 'top';
 						}
-						
 						elemStyle[key] = value;	
 						skipAttr = true;
 
@@ -286,6 +298,13 @@ VMLElement = {
 
 							key = 'fillcolor';
 						}
+
+					// opacity: don't bother - animation is too slow and filters introduce artifacts
+					} else if (key === 'opacity') {
+						/*css(element, {
+							opacity: value
+						});*/
+						skipAttr = true;
 						
 					// rotation on VML elements
 					} else if (nodeName === 'shape' && key === 'rotation') {
@@ -306,7 +325,8 @@ VMLElement = {
 						this.bBox = null;
 						element.innerHTML = value;
 						skipAttr = true;
-					}
+					} 
+
 
 					if (!skipAttr) {
 						if (docMode8) { // IE8 setAttribute bug
@@ -537,6 +557,7 @@ var VMLRendererExtension = { // inherit SVGRenderer
 
 
 		// generate the containing box
+		renderer.isVML = true;
 		renderer.box = box;
 		renderer.boxWrapper = boxWrapper;
 
@@ -956,23 +977,15 @@ var VMLRendererExtension = { // inherit SVGRenderer
 			var start = options.start,
 				end = options.end,
 				radius = options.r || w || h,
+				innerRadius = options.innerR,
 				cosStart = mathCos(start),
 				sinStart = mathSin(start),
 				cosEnd = mathCos(end),
 				sinEnd = mathSin(end),
-				innerRadius = options.innerR,
-				circleCorrection = 0.08 / radius, // #760
-				innerCorrection = (innerRadius && 0.1 / innerRadius) || 0,
 				ret;
 
 			if (end - start === 0) { // no angle, don't show it.
 				return ['x'];
-
-			} else if (2 * mathPI - end + start < circleCorrection) { // full circle
-				// empirical correction found by trying out the limits for different radii
-				cosEnd = -circleCorrection;
-			} else if (end - start < innerCorrection) { // issue #186, another mysterious VML arc problem
-				cosEnd = mathCos(start + innerCorrection);
 			}
 
 			ret = [

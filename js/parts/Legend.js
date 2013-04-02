@@ -2,7 +2,6 @@
  * The overview of the chart's series
  */
 function Legend(chart, options) {
-
 	this.init(chart, options);
 }
 
@@ -12,18 +11,18 @@ Legend.prototype = {
 	 * Initialize the legend
 	 */
 	init: function (chart, options) {
-		var legend = this;
+		
+		var legend = this,
+			itemStyle = options.itemStyle,
+			padding = pick(options.padding, 8),
+			itemMarginTop = options.itemMarginTop || 0;
+	
+		this.options = options;
 
 		if (!options.enabled) {
 			return;
 		}
 	
-		var //style = options.style || {}, // deprecated
-			itemStyle = options.itemStyle,
-			padding = pick(options.padding, 8),
-			itemMarginTop = options.itemMarginTop || 0;
-	
-		legend.options = options;
 		legend.baseline = pInt(itemStyle.fontSize) + 3 + itemMarginTop; // used in Series prototype
 		legend.itemStyle = itemStyle;
 		legend.itemHiddenStyle = merge(itemStyle, options.itemHiddenStyle);
@@ -33,25 +32,16 @@ Legend.prototype = {
 		legend.initialItemY = padding - 5; // 5 is the number of pixels above the text
 		legend.maxItemWidth = 0;
 		legend.chart = chart;
-		//legend.allItems = UNDEFINED;
-		//legend.legendWidth = UNDEFINED;
-		//legend.legendHeight = UNDEFINED;
-		//legend.offsetWidth = UNDEFINED;
 		legend.itemHeight = 0;
 		legend.lastLineHeight = 0;
-		//legend.itemX = UNDEFINED;
-		//legend.itemY = UNDEFINED;
-		//legend.lastItemY = UNDEFINED;
-	
-		// Elements
-		//legend.group = UNDEFINED;
-		//legend.box = UNDEFINED;
 
-		// run legend
+		// Render it
 		legend.render();
 
 		// move checkboxes
-		addEvent(legend.chart, 'endResize', function () { legend.positionCheckboxes(); });
+		addEvent(legend.chart, 'endResize', function () { 
+			legend.positionCheckboxes();
+		});
 
 	},
 
@@ -79,7 +69,7 @@ Legend.prototype = {
 
 		
 		if (legendItem) {
-			legendItem.css({ fill: textColor });
+			legendItem.css({ fill: textColor, color: textColor }); // color for #1553, oldIE
 		}
 		if (legendLine) {
 			legendLine.attr({ stroke: symbolColor });
@@ -189,6 +179,28 @@ Legend.prototype = {
 				}
 			});
 		}
+	},
+	
+	/**
+	 * Render the legend title on top of the legend
+	 */
+	renderTitle: function () {
+		var options = this.options,
+			padding = this.padding,
+			titleOptions = options.title,
+			titleHeight = 0;
+		
+		if (titleOptions.text) {
+			if (!this.title) {
+				this.title = this.chart.renderer.label(titleOptions.text, padding - 3, padding - 4, null, null, null, null, null, 'legend-title')
+					.attr({ zIndex: 1 })
+					.css(titleOptions.style)
+					.add(this.group);
+			}
+			titleHeight = this.title.getBBox().height;
+			this.contentGroup.attr({ translateY: titleHeight });
+		}
+		this.titleHeight = titleHeight;
 	},
 
 	/**
@@ -384,6 +396,8 @@ Legend.prototype = {
 			legend.clipRect = renderer.clipRect(0, 0, 9999, chart.chartHeight);
 			legend.contentGroup.clip(legend.clipRect);
 		}
+		
+		legend.renderTitle();
 
 		// add each series or point
 		allItems = [];
@@ -423,7 +437,7 @@ Legend.prototype = {
 
 		// Draw the border
 		legendWidth = options.width || legend.offsetWidth;
-		legendHeight = legend.lastItemY + legend.lastLineHeight;
+		legendHeight = legend.lastItemY + legend.lastLineHeight + legend.titleHeight;
 		
 		
 		legendHeight = legend.handleOverflow(legendHeight);
@@ -485,7 +499,7 @@ Legend.prototype = {
 			legendGroup.align(extend({
 				width: legendWidth,
 				height: legendHeight
-			}, options), true, chart.spacingBox);
+			}, options), true, 'spacingBox');
 		}
 
 		if (!chart.isResizing) {
@@ -523,9 +537,9 @@ Legend.prototype = {
 		}
 		
 		// Reset the legend height and adjust the clipping rectangle
-		if (legendHeight > spaceHeight) {
+		if (legendHeight > spaceHeight && !options.useHTML) { // docs - disable navigation when useHTML
 			
-			this.clipHeight = clipHeight = spaceHeight - 20;
+			this.clipHeight = clipHeight = spaceHeight - 20 - this.titleHeight;
 			this.pageCount = pageCount = mathCeil(legendHeight / clipHeight);
 			this.currentPage = pick(this.currentPage, 1);
 			this.fullHeight = legendHeight;
@@ -565,6 +579,7 @@ Legend.prototype = {
 			this.scrollGroup.attr({
 				translateY: 1
 			});
+			this.clipHeight = 0; // #1379
 		}
 		
 		return legendHeight;
@@ -599,7 +614,7 @@ Legend.prototype = {
 			
 			this.nav.attr({
 				translateX: padding,
-				translateY: clipHeight + 7,
+				translateY: clipHeight + 7 + this.titleHeight,
 				visibility: VISIBLE
 			});
 			this.up.attr({
